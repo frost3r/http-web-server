@@ -72,18 +72,56 @@ int main() {
         pid_t pid = fork();
 
         if (pid == 0) {
-            /* CHILD */
+            // CHILD 
             close(server_fd);
 
+    
+              // READ REQUEST (FIXED)
+              
             char buffer[BUFFER_SIZE];
-            memset(buffer, 0, BUFFER_SIZE);
-            read(client_fd, buffer, BUFFER_SIZE);
+            int bytes = read(client_fd, buffer, BUFFER_SIZE - 1);
+            if (bytes <= 0) {
+                close(client_fd);
+                exit(0);
+            }
+            buffer[bytes] = '\0';
 
+        
+             //  PARSE REQUEST
+             
             char method[8], path[256];
-            sscanf(buffer, "%s %s", method, path);
+            sscanf(buffer, "%7s %255s", method, path);
+            path[strcspn(path, "\r\n")] = 0;
 
-            printf("PID %d handling %s %s\n", getpid(), method, path);
+            printf("METHOD=[%s] PATH=[%s]\n", method, path);
 
+           
+              // API ENDPOINT: /health
+              
+            if (strcmp(method, "GET") == 0 && strcmp(path, "/health") == 0) {
+                const char *json = "{\"status\":\"ok\"}";
+
+                send_response(client_fd,
+                              "200 OK",
+                              "application/json",
+                              json,
+                              strlen(json));
+
+                close(client_fd);
+                exit(0);
+            }
+
+            
+              // IGNORE FAVICON
+              
+            if (strcmp(path, "/favicon.ico") == 0) {
+                close(client_fd);
+                exit(0);
+            }
+
+            
+             //  STATIC FILE SERVING
+             
             const char *file_path = NULL;
 
             if (strcmp(path, "/") == 0) {
@@ -131,7 +169,7 @@ int main() {
             exit(0);
         }
 
-        /* PARENT */
+        // PARENT 
         close(client_fd);
     }
 
