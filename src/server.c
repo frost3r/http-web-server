@@ -98,8 +98,8 @@ int main() {
            
               // API ENDPOINT: /health
               
-            if (strcmp(method, "GET") == 0 && strcmp(path, "/health") == 0) {
-                const char *json = "{\"status\":\"ok\"}";
+            if (strcmp(method, "GET") == 0 && strcmp(path, "/items") == 0) {
+                const char *json = "[\"apple\",\"banana\",\"orange\"]";
 
                 send_response(client_fd,
                               "200 OK",
