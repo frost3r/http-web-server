@@ -29,6 +29,27 @@ DRAFT 2:
 - Used plain HTTP for local emulator compatibility
 
 
-
-
 Thank you...
+
+
+## How to run the HTTP web server
+
+- Make sure GCC is installed
+- Open the project directory
+
+### Compile the server
+```bash
+gcc src/server.c -o server
+
+## RUN
+./server
+
+##check at
+http://localhost:8080
+
+## run this in terminal you will see  {"status":"ok"}
+
+curl http://localhost:8080/health
+
+
+
