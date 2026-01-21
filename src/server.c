@@ -10,6 +10,22 @@
 #define PORT 8080
 #define BUFFER_SIZE 4096
 
+#define MAX_ITEMS 100
+#define ITEM_LEN  64
+
+
+  // SERVER STATE
+   
+char items[MAX_ITEMS][ITEM_LEN] = {
+    "apple",
+    "banana",
+    "orange"
+};
+int item_count = 3;
+
+
+  // HELPER: SEND HTTP RESPONSE
+  
 void send_response(int client_fd,
                    const char *status,
                    const char *content_type,
@@ -73,11 +89,11 @@ int main() {
 
         if (pid == 0) {
             // CHILD 
+
             close(server_fd);
 
-    
-              // READ REQUEST (FIXED)
-              
+            // READ REQUEST 
+
             char buffer[BUFFER_SIZE];
             int bytes = read(client_fd, buffer, BUFFER_SIZE - 1);
             if (bytes <= 0) {
@@ -86,9 +102,8 @@ int main() {
             }
             buffer[bytes] = '\0';
 
-        
-             //  PARSE REQUEST
-             
+            // PARSE REQUEST LINE 
+
             char method[8], path[256];
             sscanf(buffer, "%7s %255s", method, path);
             path[strcspn(path, "\r\n")] = 0;
@@ -96,32 +111,80 @@ int main() {
             printf("METHOD=[%s] PATH=[%s]\n", method, path);
 
            
-              // API ENDPOINT: /health
+               //API: GET /health
+               
+            if (strcmp(method, "GET") == 0 && strcmp(path, "/health") == 0) {
+                const char *json = "{\"status\":\"ok\"}";
+                send_response(client_fd,
+                              "200 OK",
+                              "application/json",
+                              json,
+                              strlen(json));
+                close(client_fd);
+                exit(0);
+            }
+
+       
+            // API: GET /items
               
             if (strcmp(method, "GET") == 0 && strcmp(path, "/items") == 0) {
-                const char *json = "[\"apple\",\"banana\",\"orange\"]";
+                char json[1024] = "[";
+                for (int i = 0; i < item_count; i++) {
+                    strcat(json, "\"");
+                    strcat(json, items[i]);
+                    strcat(json, "\"");
+                    if (i < item_count - 1) {
+                        strcat(json, ",");
+                    }
+                }
+                strcat(json, "]");
 
                 send_response(client_fd,
                               "200 OK",
                               "application/json",
                               json,
                               strlen(json));
+                close(client_fd);
+                exit(0);
+            }
 
+           
+               // API: POST /items
+               
+            if (strcmp(method, "POST") == 0 && strcmp(path, "/items") == 0) {
+
+                char *body = strstr(buffer, "\r\n\r\n");
+                if (body) {
+                    body += 4;
+
+                    if (item_count < MAX_ITEMS) {
+                        strncpy(items[item_count], body, ITEM_LEN - 1);
+                        items[item_count][strcspn(items[item_count], "\r\n")] = 0;
+                        item_count++;
+                    }
+                }
+
+                const char *msg = "Item added";
+                send_response(client_fd,
+                              "200 OK",
+                              "text/plain",
+                              msg,
+                              strlen(msg));
                 close(client_fd);
                 exit(0);
             }
 
             
               // IGNORE FAVICON
-              
+               
             if (strcmp(path, "/favicon.ico") == 0) {
                 close(client_fd);
                 exit(0);
             }
 
             
-             //  STATIC FILE SERVING
-             
+              // STATIC FILE SERVING
+               
             const char *file_path = NULL;
 
             if (strcmp(path, "/") == 0) {
@@ -170,6 +233,7 @@ int main() {
         }
 
         // PARENT 
+
         close(client_fd);
     }
 
